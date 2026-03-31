@@ -23,10 +23,10 @@ def download_all():
     Food101(root=os.path.join(ROOT, "Food101"), split="train", download=True)
     Food101(root=os.path.join(ROOT, "Food101"), split="test", download=True)
 
-    # Flowers102
-    Flowers102(root=os.path.join(ROOT, "Flower102"), split="train", download=True)
-    Flowers102(root=os.path.join(ROOT, "Flower102"), split="val", download=True)
-    Flowers102(root=os.path.join(ROOT, "Flower102"), split="test", download=True)
+    # # Flowers102
+    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="train", download=True)
+    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="val", download=True)
+    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="test", download=True)
 
     # DTD
     DTD(root=os.path.join(ROOT, "DTD"), split="train", download=True)
