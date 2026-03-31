@@ -23,10 +23,10 @@ def download_all():
     Food101(root=os.path.join(ROOT, "Food101"), split="train", download=True)
     Food101(root=os.path.join(ROOT, "Food101"), split="test", download=True)
 
-    # # Flowers102
-    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="train", download=True)
-    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="val", download=True)
-    # Flowers102(root=os.path.join(ROOT, "Flower102"), split="test", download=True)
+    # Flowers102
+    Flowers102(root=os.path.join(ROOT, "Flower102"), split="train", download=True)
+    Flowers102(root=os.path.join(ROOT, "Flower102"), split="val", download=True)
+    Flowers102(root=os.path.join(ROOT, "Flower102"), split="test", download=True)
 
     # DTD
     DTD(root=os.path.join(ROOT, "DTD"), split="train", download=True)
@@ -42,35 +42,35 @@ def download_all():
     FGVCAircraft(root=os.path.join(ROOT, "fgvc_aircraft"), split="val", download=True)
     FGVCAircraft(root=os.path.join(ROOT, "fgvc_aircraft"), split="test", download=True)
 
-    # Stanford Cars
-    StanfordCars(root=os.path.join(ROOT, "StanfordCars"), split="train", download=True)
-    StanfordCars(root=os.path.join(ROOT, "StanfordCars"), split="test", download=True)
+    # # Stanford Cars
+    # StanfordCars(root=os.path.join(ROOT, "StanfordCars"), split="train", download=True)
+    # StanfordCars(root=os.path.join(ROOT, "StanfordCars"), split="test", download=True)
 
-    # UCF101
-    # 需要 video 数据和 annotation 目录；第一次下载会比较大
-    ucf_root = os.path.join(ROOT, "UCF101")
-    ann_root = os.path.join(ROOT, "UCF101_annotations")
-    ensure_dir(ucf_root)
-    ensure_dir(ann_root)
+    # # UCF101
+    # # 需要 video 数据和 annotation 目录；第一次下载会比较大
+    # ucf_root = os.path.join(ROOT, "UCF101")
+    # ann_root = os.path.join(ROOT, "UCF101_annotations")
+    # ensure_dir(ucf_root)
+    # ensure_dir(ann_root)
 
-    UCF101(
-        root=ucf_root,
-        annotation_path=ann_root,
-        frames_per_clip=1,
-        step_between_clips=1,
-        train=True,
-        fold=1,
-        download=True,
-    )
-    UCF101(
-        root=ucf_root,
-        annotation_path=ann_root,
-        frames_per_clip=1,
-        step_between_clips=1,
-        train=False,
-        fold=1,
-        download=True,
-    )
+    # UCF101(
+    #     root=ucf_root,
+    #     annotation_path=ann_root,
+    #     frames_per_clip=1,
+    #     step_between_clips=1,
+    #     train=True,
+    #     fold=1,
+    #     download=True,
+    # )
+    # UCF101(
+    #     root=ucf_root,
+    #     annotation_path=ann_root,
+    #     frames_per_clip=1,
+    #     step_between_clips=1,
+    #     train=False,
+    #     fold=1,
+    #     download=True,
+    # )
 
 if __name__ == "__main__":
     download_all()
