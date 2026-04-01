@@ -17,6 +17,6 @@ ctx_init=a_photo_of_a
 run_type=tpt_ctpt
 lambda_term=50
 
-srun python ./tpt_classification.py ${data_root} --test_sets ${testsets} \
+python ./tpt_classification.py ${data_root} --test_sets ${testsets} \
 -a ${arch} -b ${bs} --gpu 0 \
 --tpt --ctx_init ${ctx_init} --run_type ${run_type} --lambda_term ${lambda_term} \
