@@ -1,6 +1,6 @@
 
-module add anaconda3/2022.05
-source activate ctpt
+# module add anaconda3/2022.05
+# source activate ctpt
 data_root='/scratch/hpc/07/zhang303/C-TPT-main/data'
 testsets=$1
 #arch=RN50
