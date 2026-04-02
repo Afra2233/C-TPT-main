@@ -156,110 +156,6 @@ def clamp_normalized(x, mean, std):
     lower = (0.0 - mean) / std
     upper = (1.0 - mean) / std
     return torch.max(torch.min(x, upper), lower)
-
-
-def pgd_attack(model, images, target, args, pgen_ctx=None):
-    """
-    PGD attack after test-time prompt tuning.
-    Attack is performed in normalized image space.
-    eps, alpha are specified in pixel space (0~1), e.g. eps=4/255.
-    """
-    if args.cocoop:
-        raise NotImplementedError("PGD helper below is written for non-CoCoOp path first.")
-
-    model.eval()
-
-    mean, std = get_norm_stats(images.device)
-    eps = (args.pgd_eps / std).detach()
-    alpha = (args.pgd_alpha / std).detach()
-
-    x_orig = images.detach()
-    x_adv = x_orig.clone().detach()
-
-    if args.pgd_random_start:
-        x_adv = x_adv + torch.empty_like(x_adv).uniform_(-1, 1) * eps
-        x_adv = clamp_normalized(x_adv, mean, std)
-
-    for _ in range(args.pgd_steps):
-        x_adv.requires_grad_(True)
-
-        with torch.cuda.amp.autocast():
-            logits = model(x_adv)
-            loss = F.cross_entropy(logits, target)
-
-        grad = torch.autograd.grad(loss, x_adv, retain_graph=False, create_graph=False)[0]
-
-#         x_adv = x_adv.detach() + alpha * grad.sign()
-#         delta = torch.clamp(x_adv - x_orig, min=-eps, max=eps)
-#         x_adv = clamp_normalized(x_orig + delta, mean, std).detach()
-
-#     return x_adv
-# # ===========================================================================
-
-
-# def test_time_tuning(model, inputs, optimizer, scaler, args):
-#     output = None
-#     output2 = None
-#     single_output = None
-#     if args.cocoop:
-#         image_feature, pgen_ctx = inputs
-#         pgen_ctx.requires_grad = True
-#         optimizer = torch.optim.AdamW([pgen_ctx], args.lr)
-    
-#     selected_idx = None
-#     for j in range(args.tta_steps):
-#         if 'tpt' in args.run_type:
-#             with torch.cuda.amp.autocast():
-#                 if args.cocoop:
-#                     output = model((image_feature, pgen_ctx))
-#                 else:
-#                     output = model(inputs) 
-
-#                 if selected_idx is not None:
-#                     output = output[selected_idx]
-#                 else:
-#                     output, selected_idx = select_confident_samples(output, args.selection_p)
-
-#                 loss = avg_entropy(output)
-#         else:
-#             loss = 0
-
-#         if args.two_step and 'tpt' in args.run_type:
-#             optimizer.zero_grad()
-#             # compute gradient and do SGD step
-#             scaler.scale(loss).backward(retain_graph=True)
-#             # Unscales the gradients of optimizer's assigned params in-place
-#             scaler.step(optimizer)
-#             scaler.update()
-#             loss = 0
-
-#             with torch.cuda.amp.autocast():
-#                 if args.cocoop:
-#                     output2 = model((image_feature, pgen_ctx))
-#                 else:
-#                     output2 = model(inputs) 
-
-#         if 'ctpt' in args.run_type:
-#             if output == None and output2 == None:
-#                 single_output = model(args.image)
-
-#             lambda_ = args.lambda_term
-#             loss += (-lambda_* model.l2_norm_mean_training)
-
-#         if args.run_type not in ['baseline', 'baseline_cocoop', 'baseline_coop', 'baseline_ts']:
-#             optimizer.zero_grad()
-#             # compute gradient and do SGD step
-#             scaler.scale(loss).backward()
-#             # Unscales the gradients of optimizer's assigned params in-place
-#             scaler.step(optimizer)
-#             scaler.update()
-
-#     if args.cocoop:
-#         return pgen_ctx
-
-#     return
-
-
 def pgd_attack(model, images, target, args, pgen_ctx=None):
     """
     PGD attack after test-time prompt tuning.
@@ -307,6 +203,111 @@ def pgd_attack(model, images, target, args, pgen_ctx=None):
 
     finally:
         model.enable_image_grad = old_flag
+
+
+# def pgd_attack(model, images, target, args, pgen_ctx=None):
+#     """
+#     PGD attack after test-time prompt tuning.
+#     Attack is performed in normalized image space.
+#     eps, alpha are specified in pixel space (0~1), e.g. eps=4/255.
+#     """
+#     if args.cocoop:
+#         raise NotImplementedError("PGD helper below is written for non-CoCoOp path first.")
+
+#     model.eval()
+
+#     mean, std = get_norm_stats(images.device)
+#     eps = (args.pgd_eps / std).detach()
+#     alpha = (args.pgd_alpha / std).detach()
+
+#     x_orig = images.detach()
+#     x_adv = x_orig.clone().detach()
+
+#     if args.pgd_random_start:
+#         x_adv = x_adv + torch.empty_like(x_adv).uniform_(-1, 1) * eps
+#         x_adv = clamp_normalized(x_adv, mean, std)
+
+#     for _ in range(args.pgd_steps):
+#         x_adv.requires_grad_(True)
+
+#         with torch.cuda.amp.autocast():
+#             logits = model(x_adv)
+#             loss = F.cross_entropy(logits, target)
+
+#         grad = torch.autograd.grad(loss, x_adv, retain_graph=False, create_graph=False)[0]
+
+#         x_adv = x_adv.detach() + alpha * grad.sign()
+#         delta = torch.clamp(x_adv - x_orig, min=-eps, max=eps)
+#         x_adv = clamp_normalized(x_orig + delta, mean, std).detach()
+
+#     return x_adv
+# # ===========================================================================
+
+
+def test_time_tuning(model, inputs, optimizer, scaler, args):
+    output = None
+    output2 = None
+    single_output = None
+    if args.cocoop:
+        image_feature, pgen_ctx = inputs
+        pgen_ctx.requires_grad = True
+        optimizer = torch.optim.AdamW([pgen_ctx], args.lr)
+    
+    selected_idx = None
+    for j in range(args.tta_steps):
+        if 'tpt' in args.run_type:
+            with torch.cuda.amp.autocast():
+                if args.cocoop:
+                    output = model((image_feature, pgen_ctx))
+                else:
+                    output = model(inputs) 
+
+                if selected_idx is not None:
+                    output = output[selected_idx]
+                else:
+                    output, selected_idx = select_confident_samples(output, args.selection_p)
+
+                loss = avg_entropy(output)
+        else:
+            loss = 0
+
+        if args.two_step and 'tpt' in args.run_type:
+            optimizer.zero_grad()
+            # compute gradient and do SGD step
+            scaler.scale(loss).backward(retain_graph=True)
+            # Unscales the gradients of optimizer's assigned params in-place
+            scaler.step(optimizer)
+            scaler.update()
+            loss = 0
+
+            with torch.cuda.amp.autocast():
+                if args.cocoop:
+                    output2 = model((image_feature, pgen_ctx))
+                else:
+                    output2 = model(inputs) 
+
+        if 'ctpt' in args.run_type:
+            if output == None and output2 == None:
+                single_output = model(args.image)
+
+            lambda_ = args.lambda_term
+            loss += (-lambda_* model.l2_norm_mean_training)
+
+        if args.run_type not in ['baseline', 'baseline_cocoop', 'baseline_coop', 'baseline_ts']:
+            optimizer.zero_grad()
+            # compute gradient and do SGD step
+            scaler.scale(loss).backward()
+            # Unscales the gradients of optimizer's assigned params in-place
+            scaler.step(optimizer)
+            scaler.update()
+
+    if args.cocoop:
+        return pgen_ctx
+
+    return
+
+
+
 
 def main(args, result_dict):
 
