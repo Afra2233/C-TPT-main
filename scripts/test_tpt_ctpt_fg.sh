@@ -6,6 +6,8 @@
 #SBATCH --time=48:00:00
 #SBATCH --mem=96G
 #SBATCH --cpus-per-task=8
+#SBATCH -o /scratch/hpc/07/zhang303/C-TPT-main/%x-%j.out
+#SBATCH -e /scratch/hpc/07/zhang303/C-TPT-main/%x-%j.err
 module add anaconda3/2022.05
 source activate ctpt
 data_root='/scratch/hpc/07/zhang303/C-TPT-main/data'
@@ -19,4 +21,4 @@ lambda_term=50
 
 srun python ./tpt_classification.py ${data_root} --test_sets ${testsets} \
 -a ${arch} -b ${bs} --gpu 0 \
---tpt --ctx_init ${ctx_init} --run_type ${run_type} --lambda_term ${lambda_term} \
+--tpt --ctx_init ${ctx_init} --run_type ${run_type} --lambda_term ${lambda_term} 
