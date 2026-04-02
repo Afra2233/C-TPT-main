@@ -58,7 +58,7 @@ bash scripts/test_tpt_ctpt_fg.sh {dataset}
 #for natural distribution shift
 bash scripts/test_tpt_ctpt_ds.sh {dataset}
 ```
-The command line argument {dataset} can be specified as follows: ‘I’, ‘DTD(20742281)’, ‘Flower102’, ‘Food101’, ‘Cars’, ‘SUN397’, ‘Aircraft’, ‘Pets’, ‘Caltech101’, ‘UCF101’, or ‘eurosat’ for fine-grained classification datasets, and ‘V2’, ‘A’, ‘R’, or ‘K’ for datasets with natural distribution shifts.
+The command line argument {dataset} can be specified as follows: ‘I’, ‘DTD(20742281)’, ‘Flower102’, ‘Food101(20742630)’, ‘Cars’, ‘SUN397’, ‘Aircraft’, ‘Pets’, ‘Caltech101’, ‘UCF101’, or ‘eurosat’ for fine-grained classification datasets, and ‘V2’, ‘A’, ‘R’, or ‘K’ for datasets with natural distribution shifts.
 
 ## Acknowledgement
 This work was supported by Institute of Information & communications Technology Planning & Evaluation (IITP) grant funded by the Korea government(MSIT) (No.2022-0-00184, Development and Study of AI Technologies to Inexpensively Conform to Evolving Policy on Ethics), and Institute of Information & communications Technology Planning & Evaluation (IITP) grant funded by the Korea government(MSIT) (No. 2022-0-00951, Development of Uncertainty-Aware Agents Learning by Asking Questions).

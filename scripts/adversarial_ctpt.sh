@@ -26,7 +26,7 @@ pgd_eps=0.03137255      # 8/255
 pgd_alpha=0.00784314    # 2/255
 pgd_steps=10
 
-srun python ./tpt_classification.py ${data_root} \
+srun python ./adversarial_ctpt.py ${data_root} \
   --test_sets ${testsets} \
   -a ${arch} \
   -b ${bs} \
