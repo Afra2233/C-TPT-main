@@ -287,6 +287,7 @@ class ClipTestTimeTuning(nn.Module):
         # prompt tuning
         self.prompt_learner = PromptLearner(clip, classnames, batch_size, n_ctx, ctx_init, ctx_position, learned_cls)
         self.criterion = criterion
+        self.enable_image_grad = False
         
     @property
     def dtype(self):
@@ -310,8 +311,13 @@ class ClipTestTimeTuning(nn.Module):
         return torch.mean(text_features, dim=0)
 
     def inference(self, image):
-        with torch.no_grad():
+        # with torch.no_grad():
+        #     image_features = self.image_encoder(image.type(self.dtype))
+        if self.enable_image_grad:
             image_features = self.image_encoder(image.type(self.dtype))
+        else:
+            with torch.no_grad():
+                image_features = self.image_encoder(image.type(self.dtype))
 
         text_features = self.get_text_features()
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
@@ -335,6 +341,9 @@ class ClipTestTimeTuning(nn.Module):
         logits = logit_scale * image_features @ text_features.t()
 
         return logits
+# =======================================================================
+
+# =======================================================================
 
     def forward(self, input):
         if isinstance(input, Tuple):
