@@ -15,7 +15,7 @@ source activate ctpt
 data_root='/scratch/hpc/07/zhang303/C-TPT-main/data'
 testsets=$1
 
-arch=ViT-B/16
+arch=ViT-B/32
 bs=64
 ctx_init=a_photo_of_a
 run_type=tpt_ctpt

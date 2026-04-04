@@ -20,21 +20,32 @@ DOWNLOAD_ROOT='~/.cache/clip'
 # DOWNLOAD_ROOT='~/.cache/clip'
 
 # ==========================================================================================
-
 def _extract_state_dict(ckpt):
-    """
-    Robustly extract a state_dict from different checkpoint formats.
-    Supports keys like:
-      - ckpt['state_dict']
-      - ckpt['model']
-      - ckpt['model_state_dict']
-      - raw state_dict
-    """
     if isinstance(ckpt, dict):
+        if 'vision_encoder_state_dict' in ckpt and isinstance(ckpt['vision_encoder_state_dict'], dict):
+            print("[INFO] Using ckpt['vision_encoder_state_dict']")
+            return ckpt['vision_encoder_state_dict']
+
         for k in ['state_dict', 'model_state_dict', 'model', 'net']:
             if k in ckpt and isinstance(ckpt[k], dict):
+                print(f"[INFO] Using ckpt['{k}']")
                 return ckpt[k]
     return ckpt
+# def _extract_state_dict(ckpt):
+#     """
+#     Robustly extract a state_dict from different checkpoint formats.
+#     Supports keys like:
+#       - ckpt['state_dict']
+#       - ckpt['model']
+#       - ckpt['model_state_dict']
+#       - raw state_dict
+#     """
+#     if isinstance(ckpt, dict):
+#         for k in ['state_dict', 'model_state_dict', 'model', 'net']:
+#             if k in ckpt and isinstance(ckpt[k], dict):
+#                 return ckpt[k]
+#     return ckpt
+# ==========================================================================================
 
 
 def _strip_prefix_if_present(state_dict, prefixes=('module.', 'model.', 'clip.')):
@@ -56,47 +67,48 @@ def load_clip_with_tecoa(arch, device, download_root, robust_ckpt_path=None):
         return clip_model, embed_dim, preprocess
 
     print(f"[INFO] Loading TeCoA robust checkpoint from: {robust_ckpt_path}")
-
-    if isinstance(device, int):
-        map_location = f"cuda:{device}" if torch.cuda.is_available() else "cpu"
-    elif isinstance(device, str):
-        map_location = device
-    elif isinstance(device, torch.device):
-        map_location = device
-    else:
-        map_location = "cpu"
-
-    ckpt = torch.load(robust_ckpt_path, map_location=map_location)
+    ckpt = torch.load(robust_ckpt_path, map_location="cpu")
 
     print(f"[INFO] checkpoint type: {type(ckpt)}")
     if isinstance(ckpt, dict):
         print(f"[INFO] checkpoint top-level keys: {list(ckpt.keys())[:20]}")
         print(f"[INFO] number of top-level keys: {len(ckpt.keys())}")
 
-    state_dict = _extract_state_dict(ckpt)
+    if isinstance(ckpt, dict) and 'vision_encoder_state_dict' in ckpt:
+        state_dict = ckpt['vision_encoder_state_dict']
+        print("[INFO] Using ckpt['vision_encoder_state_dict']")
+    else:
+        state_dict = _extract_state_dict(ckpt)
+
+    print(f"[INFO] extracted state_dict num keys: {len(state_dict)}")
+    print("[INFO] first 30 extracted keys:")
+    for i, k in enumerate(state_dict.keys()):
+        if i >= 30:
+            break
+        print(k)
+
     state_dict = _strip_prefix_if_present(state_dict)
 
-    model_sd = clip_model.state_dict()
+    visual_sd = clip_model.visual.state_dict()
     filtered_sd = {}
     skipped = []
 
     for k, v in state_dict.items():
-        if k in model_sd and model_sd[k].shape == v.shape:
+        if k in visual_sd and visual_sd[k].shape == v.shape:
             filtered_sd[k] = v
         else:
             skipped.append(k)
 
-    missing_in_ckpt = [k for k in model_sd.keys() if k not in filtered_sd]
+    missing_in_ckpt = [k for k in visual_sd.keys() if k not in filtered_sd]
+    msg = clip_model.visual.load_state_dict(filtered_sd, strict=False)
 
-    msg = clip_model.load_state_dict(filtered_sd, strict=False)
-
-    print(f"[INFO] Loaded {len(filtered_sd)} matching keys from robust checkpoint.")
-    print(f"[INFO] Skipped {len(skipped)} unmatched keys from checkpoint.")
-    print(f"[INFO] Missing {len(missing_in_ckpt)} model keys not found in checkpoint.")
-    print(f"[INFO] load_state_dict msg: {msg}")
+    print(f"[INFO] Loaded {len(filtered_sd)} matching visual keys from robust checkpoint.")
+    print(f"[INFO] Skipped {len(skipped)} unmatched visual keys from checkpoint.")
+    print(f"[INFO] Missing {len(missing_in_ckpt)} visual model keys not found in checkpoint.")
+    print(f"[INFO] visual load_state_dict msg: {msg}")
 
     return clip_model, embed_dim, preprocess
-# ====================================================
+
 # def load_clip_with_tecoa(arch, device, download_root, robust_ckpt_path=None):
 #     """
 #     Load standard CLIP architecture, then optionally overwrite weights
@@ -134,6 +146,7 @@ def load_clip_with_tecoa(arch, device, download_root, robust_ckpt_path=None):
 
 #     return clip_model, embed_dim, preprocess
 # ==========================================================================================
+# ====================================================
 class ClipImageEncoder(nn.Module):
     def __init__(self, device, arch="ViT-L/14", image_resolution=224, n_class=1000):
         super(ClipImageEncoder, self).__init__()
