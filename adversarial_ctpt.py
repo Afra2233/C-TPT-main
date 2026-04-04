@@ -695,10 +695,14 @@ def test_time_adapt_eval(val_loader, model, model_state, optimizer, optim_state,
                 softmax_output = softmax(output / temperature_value['RN'])
             else:
                 raise ValueError("Unknown arch for temperature scaling")
-
+# ==========================================================================
+        # max_confidence, max_index = torch.max(softmax_output, 1)
+        # update_result_dict(result_dict, 'clean', max_confidence.item(), max_index.item(), target.item())
         max_confidence, max_index = torch.max(softmax_output, 1)
-        update_result_dict(result_dict, 'clean', max_confidence.item(), max_index.item(), target.item())
 
+        for mc, mi, tg in zip(max_confidence, max_index, target):
+            update_result_dict(result_dict, 'clean', mc.item(), mi.item(), tg.item())
+# ==========================================================================
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
         clean_top1.update(acc1[0], image.size(0))
         clean_top5.update(acc5[0], image.size(0))
@@ -722,9 +726,17 @@ def test_time_adapt_eval(val_loader, model, model_state, optimizer, optim_state,
                     adv_softmax_output = softmax(adv_output / temperature_value['RN'])
                 else:
                     raise ValueError("Unknown arch for temperature scaling")
-
+# ===================================================================
+            # adv_max_confidence, adv_max_index = torch.max(adv_softmax_output, 1)
+            # update_result_dict(result_dict, 'adv', adv_max_confidence.item(), adv_max_index.item(), target.item())
             adv_max_confidence, adv_max_index = torch.max(adv_softmax_output, 1)
-            update_result_dict(result_dict, 'adv', adv_max_confidence.item(), adv_max_index.item(), target.item())
+
+            for mc, mi, tg in zip(adv_max_confidence, adv_max_index, target):
+                update_result_dict(result_dict, 'adv', mc.item(), mi.item(), tg.item())
+# ===================================================================
+ 
+
+
 
             adv_acc1, adv_acc5 = accuracy(adv_output, target, topk=(1, 5))
             adv_top1.update(adv_acc1[0], image.size(0))
