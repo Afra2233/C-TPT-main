@@ -25,6 +25,7 @@ lambda_term=50
 pgd_eps=0.03137255      # 8/255
 pgd_alpha=0.00784314    # 2/255
 pgd_steps=10
+robust_clip_ckpt=/scratch/hpc/07/zhang303/C-TPT-main/TeCoAmodel_best.pth.tar
 
 srun python ./adversarial_ctpt.py ${data_root} \
   --test_sets ${testsets} \
@@ -39,4 +40,5 @@ srun python ./adversarial_ctpt.py ${data_root} \
   --pgd_eps ${pgd_eps} \
   --pgd_alpha ${pgd_alpha} \
   --pgd_steps ${pgd_steps} \
-  --pgd_random_start
+  --pgd_random_start \
+  --robust_clip_ckpt ${robust_clip_ckpt}

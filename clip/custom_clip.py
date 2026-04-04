@@ -17,11 +17,83 @@ import ipdb
 _tokenizer = _Tokenizer()
 
 DOWNLOAD_ROOT='~/.cache/clip'
+# DOWNLOAD_ROOT='~/.cache/clip'
 
+# ==========================================================================================
+
+def _extract_state_dict(ckpt):
+    """
+    Robustly extract a state_dict from different checkpoint formats.
+    Supports keys like:
+      - ckpt['state_dict']
+      - ckpt['model']
+      - ckpt['model_state_dict']
+      - raw state_dict
+    """
+    if isinstance(ckpt, dict):
+        for k in ['state_dict', 'model_state_dict', 'model', 'net']:
+            if k in ckpt and isinstance(ckpt[k], dict):
+                return ckpt[k]
+    return ckpt
+
+
+def _strip_prefix_if_present(state_dict, prefixes=('module.', 'model.', 'clip.')):
+    new_sd = {}
+    for k, v in state_dict.items():
+        new_k = k
+        for p in prefixes:
+            if new_k.startswith(p):
+                new_k = new_k[len(p):]
+        new_sd[new_k] = v
+    return new_sd
+
+
+def load_clip_with_tecoa(arch, device, download_root, robust_ckpt_path=None):
+    """
+    Load standard CLIP architecture, then optionally overwrite weights
+    using a TeCoA adversarially fine-tuned checkpoint.
+    """
+    clip_model, embed_dim, preprocess = load(arch, device=device, download_root=download_root)
+
+    if robust_ckpt_path is None:
+        print("[INFO] Loading original CLIP weights.")
+        return clip_model, embed_dim, preprocess
+
+    print(f"[INFO] Loading TeCoA robust checkpoint from: {robust_ckpt_path}")
+    ckpt = torch.load(robust_ckpt_path, map_location=device)
+    state_dict = _extract_state_dict(ckpt)
+    state_dict = _strip_prefix_if_present(state_dict)
+
+    model_sd = clip_model.state_dict()
+    filtered_sd = {}
+    skipped = []
+
+    for k, v in state_dict.items():
+        if k in model_sd and model_sd[k].shape == v.shape:
+            filtered_sd[k] = v
+        else:
+            skipped.append(k)
+
+    missing_in_ckpt = [k for k in model_sd.keys() if k not in filtered_sd]
+
+    msg = clip_model.load_state_dict(filtered_sd, strict=False)
+
+    print(f"[INFO] Loaded {len(filtered_sd)} matching keys from robust checkpoint.")
+    print(f"[INFO] Skipped {len(skipped)} unmatched keys from checkpoint.")
+    print(f"[INFO] Missing {len(missing_in_ckpt)} model keys not found in checkpoint.")
+    print(f"[INFO] load_state_dict msg: {msg}")
+
+    return clip_model, embed_dim, preprocess
+# ==========================================================================================
 class ClipImageEncoder(nn.Module):
     def __init__(self, device, arch="ViT-L/14", image_resolution=224, n_class=1000):
         super(ClipImageEncoder, self).__init__()
-        clip, embed_dim, _ = load(arch, device=device, download_root=DOWNLOAD_ROOT)
+        # ==========================================================================================
+
+        # clip, embed_dim, _ = load(arch, device=device, download_root=DOWNLOAD_ROOT)
+        clip, embed_dim, _ = load_clip_with_tecoa(arch, device=device, download_root=DOWNLOAD_ROOT, robust_ckpt_path=None)
+        # ==========================================================================================
+
         self.encoder = clip.visual
         del clip.transformer
         torch.cuda.empty_cache()
@@ -62,7 +134,7 @@ class TextEncoder(nn.Module):
 
 
 class PromptLearner(nn.Module):
-    def __init__(self, clip_model, classnames, batch_size=None, n_ctx=16, ctx_init=None, ctx_position='end', learned_cls=False):
+    def __init__(self, clip_model, classnames, batch_size=None, n_ctx=16, ctx_init=None, ctx_position='end', learned_cls=False, robust_ckpt_path=None):
         super().__init__()
         n_cls = len(classnames)
         self.learned_cls = learned_cls
@@ -72,6 +144,7 @@ class PromptLearner(nn.Module):
         ctx_dim = clip_model.ln_final.weight.shape[0]
         self.ctx_dim = ctx_dim
         self.batch_size = batch_size
+        self.robust_ckpt_path = robust_ckpt_path
 
         # self.ctx, prompt_prefix = self.reset_prompt(ctx_dim, ctx_init, clip_model)
 
@@ -169,9 +242,10 @@ class PromptLearner(nn.Module):
             # self.cls = nn.Parameter(cls_vectors) # to be optimized
             self.cls_init_state = cls_vectors.detach().clone()
         tokenized_prompts = torch.cat([tokenize(p) for p in prompts]).to(self.device)
-
-        clip, _, _ = load(arch, device=self.device, download_root=DOWNLOAD_ROOT)
-
+# =====================================================================================
+        # clip, _, _ = load(arch, device=self.device, download_root=DOWNLOAD_ROOT)
+        clip, _, _ = load_clip_with_tecoa(arch, device=self.device, download_root=DOWNLOAD_ROOT,robust_ckpt_path=getattr(self, "robust_ckpt_path", None))
+# =====================================================================================
         with torch.no_grad():
             embedding = clip.token_embedding(tokenized_prompts).type(self.dtype)
 
@@ -277,15 +351,29 @@ class PromptLearner(nn.Module):
 
 
 class ClipTestTimeTuning(nn.Module):
+# ==================================================================================
+# def __init__(self, device, classnames, batch_size, criterion='cosine', arch="ViT-L/14",
+                        # n_ctx=16, ctx_init=None, ctx_position='end', learned_cls=False):
+        # super(ClipTestTimeTuning, self).__init__()
     def __init__(self, device, classnames, batch_size, criterion='cosine', arch="ViT-L/14",
-                        n_ctx=16, ctx_init=None, ctx_position='end', learned_cls=False):
+                        n_ctx=16, ctx_init=None, ctx_position='end', learned_cls=False,
+                        robust_ckpt_path=None):
+       
+# ==================================================================================       
         super(ClipTestTimeTuning, self).__init__()
+        clip, _, _ = load_clip_with_tecoa(
+            arch, device=device, download_root=DOWNLOAD_ROOT,
+            robust_ckpt_path=robust_ckpt_path
+        )
         clip, _, _ = load(arch, device=device, download_root=DOWNLOAD_ROOT)
         self.image_encoder = clip.visual
         self.text_encoder = TextEncoder(clip)
         self.logit_scale = clip.logit_scale.data
         # prompt tuning
-        self.prompt_learner = PromptLearner(clip, classnames, batch_size, n_ctx, ctx_init, ctx_position, learned_cls)
+        # ======================================================================
+        # self.prompt_learner = PromptLearner(clip, classnames, batch_size, n_ctx, ctx_init, ctx_position, learned_cls)
+        self.prompt_learner = PromptLearner(clip, classnames, batch_size, n_ctx, ctx_init, ctx_position, learned_cls,robust_ckpt_path=robust_ckpt_path)
+        # =======================================================================
         self.criterion = criterion
         self.enable_image_grad = False
         
@@ -354,8 +442,10 @@ class ClipTestTimeTuning(nn.Module):
         else:
             return self.inference(input)
 
-
-def get_coop(clip_arch, test_set, device, n_ctx, ctx_init, learned_cls=False):
+# ===========================================================
+# def get_coop(clip_arch, test_set, device, n_ctx, ctx_init, learned_cls=False):
+def get_coop(clip_arch, test_set, device, n_ctx, ctx_init, learned_cls=False, robust_ckpt_path=None):
+# ===========================================================
     if test_set in fewshot_datasets:
         classnames = eval("{}_classes".format(test_set.lower()))
     elif test_set == 'bongard':
@@ -365,9 +455,13 @@ def get_coop(clip_arch, test_set, device, n_ctx, ctx_init, learned_cls=False):
             classnames = ['True', 'False']
     else:
         classnames = imagenet_classes
-
-    model = ClipTestTimeTuning(device, classnames, None, arch=clip_arch,
-                            n_ctx=n_ctx, ctx_init=ctx_init, learned_cls=learned_cls)
-
+# ===========================================================
+    # model = ClipTestTimeTuning(device, classnames, None, arch=clip_arch,
+    #                         n_ctx=n_ctx, ctx_init=ctx_init, learned_cls=learned_cls)
+    model = ClipTestTimeTuning(
+    device, classnames, None, arch=clip_arch,
+    n_ctx=n_ctx, ctx_init=ctx_init, learned_cls=learned_cls,
+    robust_ckpt_path=robust_ckpt_path)
+# ===========================================================
     return model
 

@@ -334,7 +334,10 @@ def main_worker(gpu, args, result_dict):
         load_model_weight(args.load, model, 'cpu', args) # to load to cuda: device="cuda:{}".format(args.gpu)
         model_state = deepcopy(model.state_dict())
     else:
-        model = get_coop(args.arch, args.test_sets, args.gpu, args.n_ctx, args.ctx_init)
+        # ================================================================================================
+        # model = get_coop(args.arch, args.test_sets, args.gpu, args.n_ctx, args.ctx_init)
+        model = get_coop(args.arch, args.test_sets, args.gpu, args.n_ctx, args.ctx_init,robust_ckpt_path=args.robust_clip_ckpt)
+        # ================================================================================================
         if args.load is not None:
             print("Use pre-trained soft prompt (CoOp) as initialization")
             pretrained_ctx = torch.load(args.load)['state_dict']['ctx']
@@ -795,6 +798,20 @@ if __name__ == '__main__':
                         help='number of PGD steps')
     parser.add_argument('--pgd_random_start', action='store_true', default=False,
                         help='use random start for PGD')
+    
+    parser.add_argument('--robust_clip_ckpt', type=str, default=None,
+                    help='path to adversarially fine-tuned CLIP checkpoint (e.g. TeCoA)')
+    
+    parser.add_argument('--lambda_orth', type=float, default=1.0,
+                        help='weight for orthogonality regularization')
+    parser.add_argument('--lambda_dir', type=float, default=1.0,
+                        help='weight for Dirichlet alignment loss')
+    parser.add_argument('--adv_tpt', action='store_true', default=False,
+                        help='use adversarial samples during test-time tuning')
+    parser.add_argument('--dir_temp', type=float, default=1.0,
+                        help='temperature scaling for Dirichlet evidence mapping')
+    parser.add_argument('--orth_on_adv', action='store_true', default=False,
+                        help='apply orthogonality loss during adversarial TPT')
     args = parser.parse_args()
     
     if 'ctpt' not in args.run_type:
