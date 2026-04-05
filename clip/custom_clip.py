@@ -427,7 +427,7 @@ class ClipTestTimeTuning(nn.Module):
             arch, device=device, download_root=DOWNLOAD_ROOT,
             robust_ckpt_path=robust_ckpt_path
         )
-        clip, _, _ = load(arch, device=device, download_root=DOWNLOAD_ROOT)
+        # clip, _, _ = load(arch, device=device, download_root=DOWNLOAD_ROOT)  
         self.image_encoder = clip.visual
         self.text_encoder = TextEncoder(clip)
         self.logit_scale = clip.logit_scale.data
