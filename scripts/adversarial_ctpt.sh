@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ctpt_pgd
+#SBATCH --job-name=tecoa_flower102
 #SBATCH -p gpu-medium
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
