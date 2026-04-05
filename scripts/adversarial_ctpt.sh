@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=tecoa_pet
+#SBATCH --job-name=tpt_tecoa_flower103
 #SBATCH -p gpu-medium
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
@@ -18,10 +18,10 @@ testsets=$1
 arch=ViT-B/32
 bs=64
 ctx_init=a_photo_of_a
-# run_type=tpt_ctpt
-# lambda_term=50
-run_type=baseline
-lambda_term=0
+run_type=tpt_ctpt
+lambda_term=50
+# run_type=baseline
+# lambda_term=0
 
 # PGD params
 pgd_eps=0.01568627       # 4/255
@@ -43,4 +43,4 @@ srun python ./adversarial_ctpt.py ${data_root} \
   --pgd_steps ${pgd_steps} \
   --pgd_random_start \
   --robust_clip_ckpt ${robust_clip_ckpt}\
-  # --tpt 
+  --tpt 
